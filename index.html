@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roblox Loadstring Pastebin</title>
+    <!-- Подключение официального скрипта Google API -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         body {
@@ -213,6 +214,7 @@
         <div id="authForms">
             <h3 style="margin-top: 0; text-align: center;">Авторизация в системе</h3>
             <div id="googleBtnWrapper">
+                <!-- Сюда скрипт автоматически вставит кнопку Google -->
                 <div id="buttonDiv"></div>
             </div>
         </div>
@@ -282,9 +284,8 @@
         let currentUserEmail = null;
         let currentUserName = null;
 
-        // Внимание: Для полноценной работы на твоем домене замени этот Client ID, если создашь собственный в Google Console.
-        // Этот ID настроен на работу со статических локальных хостов и базовых конфигураций страниц.
-        const GOOGLE_CLIENT_ID = "715478442894-v7k6pka167mbfpbf988p082f8q6pld4g.apps.googleusercontent.com";
+        // Вставлен твой личный Client ID
+        const GOOGLE_CLIENT_ID = "403273378657-l7uh3c0efqud00jsdcu3ff0b6ub60kft.apps.googleusercontent.com";
 
         window.onload = function() {
             if(localStorage.getItem('gh_token')) document.getElementById('githubToken').value = localStorage.getItem('gh_token');
