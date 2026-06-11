@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox Loadstring Generator</title>
+    <title>Roblox Loadstring Pastebin</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,7 +15,7 @@
         }
         textarea {
             width: 100%;
-            height: 200px;
+            height: 250px;
             background-color: #2a2a32;
             color: #00ffcc;
             border: 1px solid #444;
@@ -28,7 +28,7 @@
             background-color: #00ffcc;
             color: #1e1e24;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
@@ -38,8 +38,14 @@
         button:hover {
             background-color: #00ccaa;
         }
+        button:disabled {
+            background-color: #555;
+            color: #aaa;
+            cursor: not-allowed;
+        }
         .result-container {
             margin-top: 20px;
+            display: none;
         }
         .result-box {
             background-color: #2a2a32;
@@ -49,80 +55,122 @@
             word-break: break-all;
             white-space: pre-wrap;
             margin-top: 5px;
+            color: #00ffcc;
+        }
+        .config-section {
+            background-color: #25252d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        .config-section input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px 0;
+            background: #1e1e24;
+            border: 1px solid #444;
+            color: #fff;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
-    <h2>Генератор Loadstring для Roblox</h2>
-    <p>Вставьте ваш Lua-скрипт ниже, чтобы получить готовую строку для выполнения в игре:</p>
-    
-    <textarea id="sourceCode" placeholder="print('Hello World!')"></textarea>
-    <button onclick="generateLoadstring()">Создать ссылку</button>
 
-    <div class="result-container">
-        <h3>Готовый результат:</h3>
-        <div id="output" class="result-box">Здесь появится ваш loadstring...</div>
+    <h2>Roblox Loadstring Pastebin</h2>
+
+    <div class="config-section">
+        <h3>Настройки GitHub API</h3>
+        <label>GitHub Personal Access Token:</label>
+        <input type="password" id="githubToken" placeholder="github_pat_...">
+        
+        <label>Ваш GitHub логин (Owner):</label>
+        <input type="text" id="githubUser" placeholder="IvanIvanov">
+        
+        <label>Имя репозитория (Repository):</label>
+        <input type="text" id="githubRepo" placeholder="roblox-scripts">
+    </div>
+    
+    <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
+    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
+
+    <div id="resultContainer" class="result-container">
+        <h3>Ваш Loadstring:</h3>
+        <div id="output" class="result-box"></div>
     </div>
 
     <script>
-        function generateLoadstring() {
+        // Автоматическая загрузка настроек из localStorage для удобства
+        window.onload = function() {
+            if(localStorage.getItem('gh_token')) document.getElementById('githubToken').value = localStorage.getItem('gh_token');
+            if(localStorage.getItem('gh_user')) document.getElementById('githubUser').value = localStorage.getItem('gh_user');
+            if(localStorage.getItem('gh_repo')) document.getElementById('githubRepo').value = localStorage.getItem('gh_repo');
+        }
+
+        async function uploadScript() {
+            const token = document.getElementById('githubToken').value.trim();
+            const user = document.getElementById('githubUser').value.trim();
+            const repo = document.getElementById('githubRepo').value.trim();
             const code = document.getElementById('sourceCode').value;
-            if (!code.trim()) {
-                document.getElementById('output').innerText = 'Пожалуйста, введите код скрипта.';
+
+            if (!token || !user || !repo || !code.trim()) {
+                alert('Заполните все поля и введите код скрипта!');
                 return;
             }
 
+            // Сохраняем настройки в браузере, чтобы не вводить каждый раз
+            localStorage.setItem('gh_token', token);
+            localStorage.setItem('gh_user', user);
+            localStorage.setItem('gh_repo', repo);
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Публикация...';
+
+            // Генерируем случайное короткое имя файла (как id в pastebin)
+            const scriptId = Math.random().toString(36).substring(2, 8) + '.lua';
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/scripts/${scriptId}`;
+
+            // Кодируем текст в Base64 для GitHub API с поддержкой UTF-8
+            const utf8Bytes = new TextEncoder().encode(code);
+            let binary = '';
+            for (let i = 0; i < utf8Bytes.length; i++) {
+                binary += String.fromCharCode(utf8Bytes[i]);
+            }
+            const base64Content = btoa(binary);
+
             try {
-                const utf8Bytes = new TextEncoder().encode(code);
-                let binary = '';
-                for (let i = 0; i < utf8Bytes.length; i++) {
-                    binary += String.fromCharCode(utf8Bytes[i]);
-                }
-                const base64Code = btoa(binary);
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Upload script ${scriptId}`,
+                        content: base64Content
+                    })
+                });
 
-                const currentUrl = window.location.href.split('?')[0].split('#')[0];
-                const rawUrl = currentUrl + '?script=' + encodeURIComponent(base64Code);
-
-                const luaLoadstring = `loadstring(game:HttpGet("${rawUrl}"))()`;
-                
-                document.getElementById('output').innerText = luaLoadstring;
-            } catch (e) {
-                document.getElementById('output').innerText = 'Ошибка при генерации: ' + e.message;
-            }
-        }
-
-        function checkQueryParam() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const base64Script = urlParams.get('script');
-            
-            if (base64Script) {
-                try {
-                    const binaryString = atob(base64Script);
-                    const len = binaryString.length;
-                    const bytes = new Uint8Array(len);
-                    for (let i = 0; i < len; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-                    const decodedCode = new TextDecoder().decode(bytes);
-
-                    document.body.innerHTML = '';
-                    document.body.style.margin = '0';
-                    document.body.style.padding = '0';
-                    document.body.style.background = '#fff';
-                    document.body.style.color = '#000';
+                if (response.ok) {
+                    // Формируем прямую короткую ссылку на сырой файл
+                    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${scriptId}`;
+                    const loadstringCode = `loadstring(game:HttpGet("${rawUrl}"))()`;
                     
-                    const pre = document.createElement('pre');
-                    pre.style.whiteSpace = 'pre-wrap';
-                    pre.style.wordBreak = 'break-all';
-                    pre.innerText = decodedCode;
-                    document.body.appendChild(pre);
-                } catch (e) {
-                    document.body.innerText = 'Ошибка декодирования скрипта.';
+                    document.getElementById('output').innerText = loadstringCode;
+                    document.getElementById('resultContainer').style.display = 'block';
+                } else {
+                    const errData = await response.json();
+                    alert('Ошибка GitHub API: ' + (errData.message || response.statusText));
                 }
+            } catch (error) {
+                alert('Произошла ошибка при отправке запроса: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Опубликовать и получить ссылку';
             }
         }
-
-        window.onload = checkQueryParam;
     </script>
 </body>
 </html>
