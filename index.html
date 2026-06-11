@@ -43,6 +43,33 @@
             color: #aaa;
             cursor: not-allowed;
         }
+        .nav-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2a2a32;
+        }
+        .nav-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            background: #25252d;
+            margin-right: 5px;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            color: #aaa;
+            border: 1px solid #333;
+            border-bottom: none;
+        }
+        .nav-tab.active {
+            background: #00ffcc;
+            color: #1e1e24;
+            border-color: #00ffcc;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
         .toggle-config-btn {
             background-color: #3a3a44;
             color: #fff;
@@ -67,7 +94,7 @@
             background-color: #2a2a32;
             border: 1px solid #444;
             padding: 15px;
-            padding-right: 100px;
+            padding-right: 110px;
             font-family: monospace;
             word-break: break-all;
             white-space: pre-wrap;
@@ -81,10 +108,11 @@
             background-color: #3a3a44;
             color: #00ffcc;
             border: 1px solid #444;
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 8px 14px;
+            font-size: 13px;
             width: auto;
             margin-top: 0;
+            border-radius: 4px;
         }
         .copy-btn:hover {
             background-color: #4a4a55;
@@ -124,57 +152,47 @@
             margin-right: 10px;
             cursor: pointer;
         }
-        .auth-tabs {
+        .auth-subtabs {
             display: flex;
             margin-bottom: 15px;
             border-bottom: 1px solid #444;
         }
-        .auth-tab {
-            padding: 10px 20px;
+        .auth-subtab {
+            padding: 8px 16px;
             cursor: pointer;
             background: #3a3a44;
             margin-right: 5px;
             border-radius: 4px 4px 0 0;
+            font-size: 14px;
         }
-        .auth-tab.active {
+        .auth-subtab.active {
             background: #00ffcc;
             color: #1e1e24;
             font-weight: bold;
         }
-        .history-item {
-            background: #2a2a32;
-            border: 1px solid #444;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            position: relative;
+        .history-card {
+            background: #25252d;
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            padding: 15px;
         }
-        .history-item-title {
+        .history-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+        .history-card-title {
             font-weight: bold;
             color: #00ffcc;
-            margin-bottom: 5px;
+            font-size: 16px;
         }
-        .history-item-url {
-            font-family: monospace;
+        .history-card-meta {
             font-size: 12px;
-            color: #aaa;
-            word-break: break-all;
-            padding-right: 90px;
-        }
-        .history-copy-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #3a3a44;
-            color: #00ffcc;
-            border: 1px solid #444;
-            padding: 5px 10px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-        .history-copy-btn:hover {
-            background: #4a4a55;
+            color: #888;
         }
         .user-info {
             display: flex;
@@ -189,21 +207,26 @@
             font-size: 12px;
             width: auto;
             margin-top: 0;
+            border-radius: 4px;
         }
         .logout-btn:hover {
             background: #cc4444;
+        }
+        .placeholder-text {
+            text-align: center;
+            color: #888;
+            padding: 30px 0;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
 
-    <h2>Roblox Loadstring Pastebin v6</h2>
-
     <div class="auth-section">
         <div id="authForms">
-            <div class="auth-tabs">
-                <div id="tabLogin" class="auth-tab active" onclick="switchAuthTab('login')">Вход</div>
-                <div id="tabRegister" class="auth-tab" onclick="switchAuthTab('register')">Регистрация</div>
+            <div class="auth-subtabs">
+                <div id="tabLogin" class="auth-subtab active" onclick="switchAuthTab('login')">Вход</div>
+                <div id="tabRegister" class="auth-subtab" onclick="switchAuthTab('register')">Регистрация</div>
             </div>
             
             <div id="loginForm">
@@ -231,49 +254,57 @@
         </div>
     </div>
 
-    <button class="toggle-config-btn" onclick="toggleConfig()">Скрыть / Показать настройки</button>
-
-    <div id="configSection" class="config-section">
-        <h3>Настройки GitHub API</h3>
-        <label>GitHub Personal Access Token:</label>
-        <input type="text" id="githubToken" placeholder="github_pat_...">
-        
-        <label>Ваш GitHub логин (Owner):</label>
-        <input type="text" id="githubUser" value="MrDani307">
-        
-        <label>Имя репозитория (Repository):</label>
-        <input type="text" id="githubRepo" value="URL-for-loadstrings">
+    <div class="nav-tabs">
+        <div id="navTabMain" class="nav-tab active" onclick="switchMainTab('main')">Генератор скриптов</div>
+        <div id="navTabHistory" class="nav-tab" onclick="switchMainTab('history')">История скриптов</div>
     </div>
 
-    <div class="mode-section">
-        <h3>Режим генерации ссылки</h3>
-        <label class="mode-option">
-            <input type="radio" name="urlMode" value="pages" checked onchange="updateInputs()">
-            Красивая ссылка через GitHub Pages (в папку pages/)
-        </label>
-        <label class="mode-option">
-            <input type="radio" name="urlMode" value="short" onchange="updateInputs()">
-            Сокращенная ссылка (через TinyURL)
-        </label>
-    </div>
-    
-    <input type="text" id="scriptAlias" class="alias-input" placeholder="Название ссылки (например: fly)">
-    <br><br>
+    <div id="tabContentMain" class="tab-content active">
+        <button class="toggle-config-btn" onclick="toggleConfig()">Скрыть / Показать настройки</button>
 
-    <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
-    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
+        <div id="configSection" class="config-section">
+            <h3>Настройки GitHub API</h3>
+            <label>GitHub Personal Access Token:</label>
+            <input type="text" id="githubToken" placeholder="github_pat_...">
+            
+            <label>Ваш GitHub логин (Owner):</label>
+            <input type="text" id="githubUser" value="MrDani307">
+            
+            <label>Имя репозитория (Repository):</label>
+            <input type="text" id="githubRepo" value="URL-for-loadstrings">
+        </div>
 
-    <div id="resultContainer" class="result-container">
-        <h3>Ваш Loadstring:</h3>
-        <div class="result-box-wrapper">
-            <div id="output" class="result-box"></div>
-            <button class="copy-btn" onclick="copyToClipboard('output')">Копировать</button>
+        <div class="mode-section">
+            <h3>Режим генерации ссылки</h3>
+            <label class="mode-option">
+                <input type="radio" name="urlMode" value="pages" checked onchange="updateInputs()">
+                Красивая ссылка через GitHub Pages (в папку pages/)
+            </label>
+            <label class="mode-option">
+                <input type="radio" name="urlMode" value="short" onchange="updateInputs()">
+                Сокращенная ссылка (через TinyURL)
+            </label>
+        </div>
+        
+        <input type="text" id="scriptAlias" class="alias-input" placeholder="Название ссылки (например: fly)">
+        <br><br>
+
+        <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
+        <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
+
+        <div id="resultContainer" class="result-container">
+            <h3>Ваш Loadstring:</h3>
+            <div class="result-box-wrapper">
+                <div id="output" class="result-box"></div>
+                <button class="copy-btn" onclick="copyToClipboard('output')">Копировать</button>
+            </div>
         </div>
     </div>
 
-    <div id="historySection" class="history-section" style="display: none;">
-        <h3>История скриптов аккаунта</h3>
-        <div id="historyList">Нет сохраненных скриптов.</div>
+    <div id="tabContentHistory" class="tab-content">
+        <div class="history-section">
+            <div id="historyList">Войдите в аккаунт, чтобы просматривать историю сохраненных скриптов.</div>
+        </div>
     </div>
 
     <script>
@@ -293,6 +324,21 @@
             }
             
             updateInputs();
+        }
+
+        function switchMainTab(tab) {
+            if (tab === 'main') {
+                document.getElementById('navTabMain').classList.add('active');
+                document.getElementById('navTabHistory').classList.remove('active');
+                document.getElementById('tabContentMain').classList.add('active');
+                document.getElementById('tabContentHistory').classList.remove('active');
+            } else {
+                document.getElementById('navTabMain').classList.remove('active');
+                document.getElementById('navTabHistory').classList.add('active');
+                document.getElementById('tabContentMain').classList.remove('active');
+                document.getElementById('tabContentHistory').classList.add('active');
+                renderHistory();
+            }
         }
 
         function switchAuthTab(tab) {
@@ -348,7 +394,6 @@
             document.getElementById('authForms').style.display = 'none';
             document.getElementById('userInfoSection').style.display = 'block';
             document.getElementById('currentUserName').innerText = user;
-            document.getElementById('historySection').style.display = 'block';
             renderHistory();
         }
 
@@ -357,35 +402,45 @@
             sessionStorage.removeItem('current_user');
             document.getElementById('authForms').style.display = 'block';
             document.getElementById('userInfoSection').style.display = 'none';
-            document.getElementById('historySection').style.display = 'none';
+            document.getElementById('historyList').innerHTML = 'Войдите в аккаунт, чтобы просматривать историю сохраненных скриптов.';
         }
 
-        function saveToUserHistory(title, loadstring) {
+        function saveToUserHistory(title, mode, loadstring) {
             if (!currentUser) return;
             const users = JSON.parse(localStorage.getItem('app_users') || '{}');
             if (users[currentUser]) {
-                users[currentUser].history.push({ title, loadstring });
+                const dateStr = new Date().toLocaleString('ru-RU');
+                users[currentUser].history.push({ title, mode, loadstring, date: dateStr });
                 localStorage.setItem('app_users', JSON.stringify(users));
                 renderHistory();
             }
         }
 
         function renderHistory() {
-            if (!currentUser) return;
-            const users = JSON.parse(localStorage.getItem('app_users') || '{}');
             const historyList = document.getElementById('historyList');
+            if (!currentUser) {
+                historyList.innerHTML = '<div class="placeholder-text">Войдите в аккаунт, чтобы просматривать историю сохраненных скриптов.</div>';
+                return;
+            }
+            
+            const users = JSON.parse(localStorage.getItem('app_users') || '{}');
             const history = users[currentUser]?.history || [];
             
             if (history.length === 0) {
-                historyList.innerHTML = 'Нет сохраненных скриптов.';
+                historyList.innerHTML = '<div class="placeholder-text">В вашей истории пока нет сохраненных скриптов.</div>';
                 return;
             }
             
             historyList.innerHTML = history.map((item, index) => `
-                <div class="history-item">
-                    <div class="history-item-title">${item.title}</div>
-                    <div class="history-item-url" id="histUrl_${index}">${item.loadstring}</div>
-                    <button class="history-copy-btn" onclick="copyToClipboard('histUrl_${index}')">Копировать</button>
+                <div class="history-card">
+                    <div class="history-card-header">
+                        <div class="history-card-title">${item.title}</div>
+                        <div class="history-card-meta">${item.date} | Режим: ${item.mode === 'pages' ? 'Pages' : 'TinyURL'}</div>
+                    </div>
+                    <div class="result-box-wrapper">
+                        <div class="result-box" id="histUrl_${index}">${item.loadstring}</div>
+                        <button class="copy-btn" onclick="copyToClipboard('histUrl_${index}')">Копировать</button>
+                    </div>
                 </div>
             `).reverse().join('');
         }
@@ -504,7 +559,7 @@
                     document.getElementById('resultContainer').style.display = 'block';
                     
                     if (currentUser) {
-                        saveToUserHistory(fileName, loadstringCode);
+                        saveToUserHistory(fileName, mode, loadstringCode);
                     }
                 } else {
                     const errData = await response.json();
