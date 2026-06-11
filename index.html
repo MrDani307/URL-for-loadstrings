@@ -73,11 +73,20 @@
             color: #fff;
             box-sizing: border-box;
         }
+        .alias-input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #2a2a32;
+            border: 1px solid #444;
+            color: #fff;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Roblox Loadstring Pastebin</h2>
+    <h2>Roblox Loadstring Pastebin v3</h2>
 
     <div class="config-section">
         <h3>Настройки GitHub API</h3>
@@ -91,11 +100,14 @@
         <input type="text" id="githubRepo" value="URL-for-loadstrings">
     </div>
     
+    <input type="text" id="scriptAlias" class="alias-input" placeholder="Красивое название ссылки (например: fly)">
+    <br><br>
+
     <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
-    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
+    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить красивую ссылку</button>
 
     <div id="resultContainer" class="result-container">
-        <h3>Ваш Loadstring:</h3>
+        <h3>Ваш красивый Loadstring:</h3>
         <div id="output" class="result-box"></div>
     </div>
 
@@ -106,29 +118,24 @@
             if(localStorage.getItem('gh_repo')) document.getElementById('githubRepo').value = localStorage.getItem('gh_repo');
         }
 
-        async function shortenUrl(longUrl) {
-            try {
-                // Используем прокси для обхода CORS ограничений при запросе к is.gd
-                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-                if (response.ok) {
-                    return await response.text();
-                }
-            } catch (e) {
-                console.error("Не удалось сократить ссылку:", e);
-            }
-            return longUrl; // Если ошибка, возвращаем длинную
-        }
-
         async function uploadScript() {
             const token = document.getElementById('githubToken').value.trim();
             const user = document.getElementById('githubUser').value.trim();
             const repo = document.getElementById('githubRepo').value.trim();
             const code = document.getElementById('sourceCode').value;
+            let alias = document.getElementById('scriptAlias').value.trim().toLowerCase();
 
             if (!token || !user || !repo || !code.trim()) {
                 alert('Заполните все поля и введите код скрипта!');
                 return;
             }
+
+            if (!alias) {
+                alias = Math.random().toString(36).substring(2, 7);
+            }
+
+            // Убираем лишние символы из названия ссылки
+            alias = alias.replace(/[^a-z0-9-_]/g, '');
 
             localStorage.setItem('gh_token', token);
             localStorage.setItem('gh_user', user);
@@ -136,50 +143,71 @@
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerText = 'Публикация...';
+            submitBtn.innerText = 'Создание красивой ссылки...';
 
-            const scriptId = Math.random().toString(36).substring(2, 8) + '.lua';
-            const url = `https://api.github.com/repos/${user}/${repo}/contents/scripts/${scriptId}`;
+            // Путь к файлу-перенаправлению в репозитории
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/${alias}`;
 
+            // Создаем HTML-файл для Jekyll, который отдаст чистый текст скрипта
+            const redirectContent = `---
+permalink: /${alias}
+redirect_to: https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${alias}.lua
+---`;
+
+            // Сначала создаем сам Lua скрипт
+            const luaUrl = `https://api.github.com/repos/${user}/${repo}/contents/scripts/${alias}.lua`;
+            
             const utf8Bytes = new TextEncoder().encode(code);
             let binary = '';
             for (let i = 0; i < utf8Bytes.length; i++) {
                 binary += String.fromCharCode(utf8Bytes[i]);
             }
-            const base64Content = btoa(binary);
+            const base64Lua = btoa(binary);
 
             try {
+                // 1. Загружаем Lua скрипт
+                await fetch(luaUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Create script ${alias}`,
+                        content: base64Lua
+                    })
+                });
+
+                // 2. Создаем красивый редирект для GitHub Pages
+                const base64Redirect = btoa(redirectContent);
                 const response = await fetch(url, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: `Upload script ${scriptId}`,
-                        content: base64Content
+                        message: `Create redirect for ${alias}`,
+                        content: base64Redirect
                     })
                 });
 
                 if (response.ok) {
-                    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${scriptId}`;
-                    
-                    // Сокращаем ссылку через внешний сервис
-                    const shortUrl = await shortenUrl(rawUrl);
-                    const loadstringCode = `loadstring(game:HttpGet("${shortUrl}"))()`;
+                    // Формируем самый красивый URL через твой GitHub Pages домен
+                    const customUrl = `https://${user}.github.io/${repo}/${alias}`;
+                    const loadstringCode = `loadstring(game:HttpGet("${customUrl}"))()`;
                     
                     document.getElementById('output').innerText = loadstringCode;
                     document.getElementById('resultContainer').style.display = 'block';
                 } else {
                     const errData = await response.json();
-                    alert('Ошибка GitHub API: ' + (errData.message || response.statusText));
+                    alert('Ошибка: ' + (errData.message || response.statusText));
                 }
             } catch (error) {
-                alert('Произошла ошибка при отправке запроса: ' + error.message);
+                alert('Произошла ошибка: ' + error.message);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerText = 'Опубликовать и получить ссылку';
+                submitBtn.innerText = 'Опубликовать и получить красивую ссылку';
             }
         }
     </script>
