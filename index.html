@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roblox Loadstring Pastebin</title>
-    <!-- Подключение официального скрипта Google API -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         body {
@@ -144,6 +143,12 @@
             color: #fff;
             box-sizing: border-box;
         }
+        .alias-input:disabled {
+            background: #1e1e24;
+            color: #666;
+            border-color: #333;
+            cursor: not-allowed;
+        }
         .mode-option {
             margin: 10px 0;
             display: flex;
@@ -214,7 +219,6 @@
         <div id="authForms">
             <h3 style="margin-top: 0; text-align: center;">Авторизация в системе</h3>
             <div id="googleBtnWrapper">
-                <!-- Сюда скрипт автоматически вставит кнопку Google -->
                 <div id="buttonDiv"></div>
             </div>
         </div>
@@ -284,7 +288,7 @@
         let currentUserEmail = null;
         let currentUserName = null;
 
-        // Вставлен твой личный Client ID
+        // Твой личный Client ID
         const GOOGLE_CLIENT_ID = "403273378657-l7uh3c0efqud00jsdcu3ff0b6ub60kft.apps.googleusercontent.com";
 
         window.onload = function() {
@@ -442,9 +446,12 @@
             const mode = document.querySelector('input[name="urlMode"]:checked').value;
             const aliasInput = document.getElementById('scriptAlias');
             if (mode === 'short') {
-                aliasInput.placeholder = 'Название файла на GitHub (необязательно)';
+                aliasInput.placeholder = 'В режиме TinyURL название генерируется автоматически';
+                aliasInput.disabled = true;
+                aliasInput.value = '';
             } else {
                 aliasInput.placeholder = 'Название ссылки (например: fly)';
+                aliasInput.disabled = false;
             }
         }
 
@@ -473,8 +480,9 @@
                 return;
             }
 
-            if (!alias) {
-                alias = Math.random().toString(36).substring(2, 8);
+            // В режиме TinyURL принудительно игнорируем ввод и генерируем случайный набор символов
+            if (mode === 'short' || !alias) {
+                alias = Math.random().toString(36).substring(2, 10);
             }
 
             alias = alias.replace(/[^a-z0-9-_]/g, '');
@@ -536,7 +544,7 @@
                     }
                 } else {
                     const errData = await response.json();
-                    alert('Ошибка: ' + (errData.message || response.statusText));
+                    alert('Ошибка GitHub API: ' + (errData.message || response.statusText));
                 }
             } catch (error) {
                 alert('Произошла ошибка: ' + error.message);
