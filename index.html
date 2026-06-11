@@ -143,12 +143,6 @@
             color: #fff;
             box-sizing: border-box;
         }
-        .alias-input:disabled {
-            background: #1e1e24;
-            color: #666;
-            border-color: #333;
-            cursor: not-allowed;
-        }
         .mode-option {
             margin: 10px 0;
             display: flex;
@@ -263,7 +257,7 @@
             </label>
         </div>
         
-        <input type="text" id="scriptAlias" class="alias-input" placeholder="Название ссылки (например: fly)">
+        <input type="text" id="scriptAlias" class="alias-input" placeholder="Название для истории или ссылки (например: Fly MM2)">
         <br><br>
 
         <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
@@ -446,12 +440,9 @@
             const mode = document.querySelector('input[name="urlMode"]:checked').value;
             const aliasInput = document.getElementById('scriptAlias');
             if (mode === 'short') {
-                aliasInput.placeholder = 'В режиме TinyURL название генерируется автоматически';
-                aliasInput.disabled = true;
-                aliasInput.value = '';
+                aliasInput.placeholder = 'Название для вкладки истории (например: Fly для MM2)';
             } else {
                 aliasInput.placeholder = 'Название ссылки (например: fly)';
-                aliasInput.disabled = false;
             }
         }
 
@@ -473,35 +464,38 @@
             const repo = document.getElementById('githubRepo').value.trim();
             const code = document.getElementById('sourceCode').value;
             const mode = document.querySelector('input[name="urlMode"]:checked').value;
-            let alias = document.getElementById('scriptAlias').value.trim().toLowerCase();
+            let rawAlias = document.getElementById('scriptAlias').value.trim();
 
             if (!token || !user || !repo || !code.trim()) {
                 alert('Заполните все поля и введите код скрипта!');
                 return;
             }
 
-            // В режиме TinyURL принудительно игнорируем ввод и генерируем случайный набор символов
-            if (mode === 'short' || !alias) {
-                alias = Math.random().toString(36).substring(2, 10);
+            // Для истории сохраняем введённое название или генерируем дефолтное
+            let historyTitle = rawAlias ? rawAlias : `Скрипт [${Math.random().toString(36).substring(2, 6)}]`;
+            
+            let finalGithubAlias;
+            if (mode === 'short') {
+                // В режиме TinyURL для Гитхаба всегда берем рандомный ID во избежание сбоев в API сокращателя
+                finalGithubAlias = Math.random().toString(36).substring(2, 10);
+            } else {
+                // В режиме Pages очищаем введённую строку под требования URL
+                finalGithubAlias = rawAlias.toLowerCase().replace(/[^a-z0-9-_]/g, '');
+                if (!finalGithubAlias) {
+                    finalGithubAlias = Math.random().toString(36).substring(2, 8);
+                }
+                historyTitle = `${finalGithubAlias}.txt`; // В режиме Pages отображаем имя файла
             }
-
-            alias = alias.replace(/[^a-z0-9-_]/g, '');
-
-            localStorage.setItem('gh_token', token);
-            localStorage.setItem('gh_user', user);
-            localStorage.setItem('gh_repo', repo);
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.innerText = 'Публикация скрипта...';
 
-            let path, fileName;
+            let path;
             if (mode === 'pages') {
-                fileName = `${alias}.txt`;
-                path = `pages/${fileName}`;
+                path = `pages/${finalGithubAlias}.txt`;
             } else {
-                fileName = `${alias}.lua`;
-                path = `scripts/${fileName}`;
+                path = `scripts/${finalGithubAlias}.lua`;
             }
 
             const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
@@ -521,7 +515,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: `Upload script ${fileName}`,
+                        message: `Upload script ${finalGithubAlias}`,
                         content: base64Content
                     })
                 });
@@ -529,9 +523,9 @@
                 if (response.ok) {
                     let targetUrl;
                     if (mode === 'pages') {
-                        targetUrl = `https://${user}.github.io/${repo}/pages/${fileName}`;
+                        targetUrl = `https://${user}.github.io/${repo}/pages/${finalGithubAlias}.txt`;
                     } else {
-                        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${fileName}`;
+                        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${finalGithubAlias}.lua`;
                         targetUrl = await shortenUrl(rawUrl);
                     }
 
@@ -540,7 +534,7 @@
                     document.getElementById('resultContainer').style.display = 'block';
                     
                     if (currentUserEmail) {
-                        saveToUserHistory(fileName, mode, loadstringCode);
+                        saveToUserHistory(historyTitle, mode, loadstringCode);
                     }
                 } else {
                     const errData = await response.json();
