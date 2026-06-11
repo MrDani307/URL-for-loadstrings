@@ -82,7 +82,7 @@
     <div class="config-section">
         <h3>Настройки GitHub API</h3>
         <label>GitHub Personal Access Token:</label>
-        <input type="password" id="githubToken" placeholder="github_pat_...">
+        <input type="text" id="githubToken" placeholder="github_pat_...">
         
         <label>Ваш GitHub логин (Owner):</label>
         <input type="text" id="githubUser" placeholder="IvanIvanov">
@@ -100,7 +100,6 @@
     </div>
 
     <script>
-        // Автоматическая загрузка настроек из localStorage для удобства
         window.onload = function() {
             if(localStorage.getItem('gh_token')) document.getElementById('githubToken').value = localStorage.getItem('gh_token');
             if(localStorage.getItem('gh_user')) document.getElementById('githubUser').value = localStorage.getItem('gh_user');
@@ -118,7 +117,6 @@
                 return;
             }
 
-            // Сохраняем настройки в браузере, чтобы не вводить каждый раз
             localStorage.setItem('gh_token', token);
             localStorage.setItem('gh_user', user);
             localStorage.setItem('gh_repo', repo);
@@ -127,11 +125,9 @@
             submitBtn.disabled = true;
             submitBtn.innerText = 'Публикация...';
 
-            // Генерируем случайное короткое имя файла (как id в pastebin)
             const scriptId = Math.random().toString(36).substring(2, 8) + '.lua';
             const url = `https://api.github.com/repos/${user}/${repo}/contents/scripts/${scriptId}`;
 
-            // Кодируем текст в Base64 для GitHub API с поддержкой UTF-8
             const utf8Bytes = new TextEncoder().encode(code);
             let binary = '';
             for (let i = 0; i < utf8Bytes.length; i++) {
@@ -154,7 +150,6 @@
                 });
 
                 if (response.ok) {
-                    // Формируем прямую короткую ссылку на сырой файл
                     const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${scriptId}`;
                     const loadstringCode = `loadstring(game:HttpGet("${rawUrl}"))()`;
                     
