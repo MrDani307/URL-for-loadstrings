@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roblox Loadstring Pastebin</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -34,6 +35,518 @@
             cursor: pointer;
             margin-top: 10px;
             width: 100%;
+        }
+        button:hover {
+            background-color: #00ccaa;
+        }
+        button:disabled {
+            background-color: #555;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+        .nav-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2a2a32;
+        }
+        .nav-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            background: #25252d;
+            margin-right: 5px;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            color: #aaa;
+            border: 1px solid #333;
+            border-bottom: none;
+        }
+        .nav-tab.active {
+            background: #00ffcc;
+            color: #1e1e24;
+            border-color: #00ffcc;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .toggle-config-btn {
+            background-color: #3a3a44;
+            color: #fff;
+            padding: 8px 15px;
+            font-size: 14px;
+            width: auto;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .toggle-config-btn:hover {
+            background-color: #4a4a55;
+        }
+        .result-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .result-box-wrapper {
+            position: relative;
+            margin-top: 5px;
+        }
+        .result-box {
+            background-color: #2a2a32;
+            border: 1px solid #444;
+            padding: 15px;
+            padding-right: 110px;
+            font-family: monospace;
+            word-break: break-all;
+            white-space: pre-wrap;
+            color: #00ffcc;
+        }
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #3a3a44;
+            color: #00ffcc;
+            border: 1px solid #444;
+            padding: 8px 14px;
+            font-size: 13px;
+            width: auto;
+            margin-top: 0;
+            border-radius: 4px;
+        }
+        .copy-btn:hover {
+            background-color: #4a4a55;
+        }
+        .config-section, .mode-section, .auth-section, .history-section {
+            background-color: #25252d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        .config-section input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px 0;
+            background: #1e1e24;
+            border: 1px solid #444;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        .alias-input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #2a2a32;
+            border: 1px solid #444;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        .mode-option {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .mode-option input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .history-card {
+            background: #25252d;
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        .history-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+        .history-card-title {
+            font-weight: bold;
+            color: #00ffcc;
+            font-size: 16px;
+        }
+        .history-card-meta {
+            font-size: 12px;
+            color: #888;
+        }
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logout-btn {
+            background: #ff5555;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 13px;
+            width: auto;
+            margin-top: 0;
+            border-radius: 4px;
+        }
+        .logout-btn:hover {
+            background: #cc4444;
+        }
+        .placeholder-text {
+            text-align: center;
+            color: #888;
+            padding: 30px 0;
+            font-size: 16px;
+        }
+        #googleBtnWrapper {
+            display: flex;
+            justify-content: center;
+            padding: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-section">
+        <div id="authForms">
+            <h3 style="margin-top: 0; text-align: center;">Авторизация в системе</h3>
+            <div id="googleBtnWrapper">
+                <div id="buttonDiv"></div>
+            </div>
+        </div>
+
+        <div id="userInfoSection" style="display: none;">
+            <div class="user-info">
+                <span>Вы вошли как: <strong id="currentUserName" style="color: #00ffcc;"></strong> (<span id="currentUserEmail" style="color: #aaa;"></span>)</span>
+                <button class="logout-btn" onclick="handleLogout()">Выйти</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <div id="navTabMain" class="nav-tab active" onclick="switchMainTab('main')">Генератор скриптов</div>
+        <div id="navTabHistory" class="nav-tab" onclick="switchMainTab('history')">История скриптов</div>
+    </div>
+
+    <div id="tabContentMain" class="tab-content active">
+        <button class="toggle-config-btn" onclick="toggleConfig()">Скрыть / Показать настройки</button>
+
+        <div id="configSection" class="config-section">
+            <h3>Настройки GitHub API</h3>
+            <label>GitHub Personal Access Token:</label>
+            <input type="text" id="githubToken" placeholder="github_pat_...">
+            
+            <label>Ваш GitHub логин (Owner):</label>
+            <input type="text" id="githubUser" value="MrDani307">
+            
+            <label>Имя репозитория (Repository):</label>
+            <input type="text" id="githubRepo" value="URL-for-loadstrings">
+        </div>
+
+        <div class="mode-section">
+            <h3>Режим генерации ссылки</h3>
+            <label class="mode-option">
+                <input type="radio" name="urlMode" value="pages" checked onchange="updateInputs()">
+                Красивая ссылка через GitHub Pages (в папку pages/)
+            </label>
+            <label class="mode-option">
+                <input type="radio" name="urlMode" value="short" onchange="updateInputs()">
+                Сокращенная ссылка (через TinyURL)
+            </label>
+        </div>
+        
+        <input type="text" id="scriptAlias" class="alias-input" placeholder="Название ссылки (например: fly)">
+        <br><br>
+
+        <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
+        <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
+
+        <div id="resultContainer" class="result-container">
+            <h3>Ваш Loadstring:</h3>
+            <div class="result-box-wrapper">
+                <div id="output" class="result-box"></div>
+                <button class="copy-btn" onclick="copyToClipboard('output')">Копировать</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tabContentHistory" class="tab-content">
+        <div class="history-section">
+            <div id="historyList">Войдите через Google, чтобы просматривать историю сохраненных скриптов.</div>
+        </div>
+    </div>
+
+    <script>
+        let currentUserEmail = null;
+        let currentUserName = null;
+
+        // Внимание: Для полноценной работы на твоем домене замени этот Client ID, если создашь собственный в Google Console.
+        // Этот ID настроен на работу со статических локальных хостов и базовых конфигураций страниц.
+        const GOOGLE_CLIENT_ID = "715478442894-v7k6pka167mbfpbf988p082f8q6pld4g.apps.googleusercontent.com";
+
+        window.onload = function() {
+            if(localStorage.getItem('gh_token')) document.getElementById('githubToken').value = localStorage.getItem('gh_token');
+            if(localStorage.getItem('gh_user')) document.getElementById('githubUser').value = localStorage.getItem('gh_user');
+            if(localStorage.getItem('gh_repo')) document.getElementById('githubRepo').value = localStorage.getItem('gh_repo');
+            if(localStorage.getItem('gh_config_visible') === 'false') {
+                document.getElementById('configSection').style.display = 'none';
+            }
+            
+            const savedEmail = sessionStorage.getItem('google_user_email');
+            const savedName = sessionStorage.getItem('google_user_name');
+            if (savedEmail && savedName) {
+                initUserSession(savedEmail, savedName);
+            } else {
+                initGoogleAuth();
+            }
+            
+            updateInputs();
+        }
+
+        function initGoogleAuth() {
+            try {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleCredentialResponse
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById("buttonDiv"),
+                    { theme: "dark", size: "large", width: "250" }
+                );
+            } catch (e) {
+                console.error("Ошибка инициализации Google Auth:", e);
+            }
+        }
+
+        function parseJwt(token) {
+            var base64Url = token.split('.')[1];
+            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        function handleCredentialResponse(response) {
+            const responsePayload = parseJwt(response.credential);
+            const email = responsePayload.email;
+            const name = responsePayload.name;
+
+            sessionStorage.setItem('google_user_email', email);
+            sessionStorage.setItem('google_user_name', name);
+
+            initUserSession(email, name);
+        }
+
+        function initUserSession(email, name) {
+            currentUserEmail = email;
+            currentUserName = name;
+            document.getElementById('authForms').style.display = 'none';
+            document.getElementById('userInfoSection').style.display = 'block';
+            document.getElementById('currentUserName').innerText = name;
+            document.getElementById('currentUserEmail').innerText = email;
+            renderHistory();
+        }
+
+        function handleLogout() {
+            currentUserEmail = null;
+            currentUserName = null;
+            sessionStorage.removeItem('google_user_email');
+            sessionStorage.removeItem('google_user_name');
+            document.getElementById('authForms').style.display = 'block';
+            document.getElementById('userInfoSection').style.display = 'none';
+            document.getElementById('historyList').innerHTML = '<div class="placeholder-text">Войдите через Google, чтобы просматривать историю сохраненных скриптов.</div>';
+            setTimeout(initGoogleAuth, 100);
+        }
+
+        function switchMainTab(tab) {
+            if (tab === 'main') {
+                document.getElementById('navTabMain').classList.add('active');
+                document.getElementById('navTabHistory').classList.remove('active');
+                document.getElementById('tabContentMain').classList.add('active');
+                document.getElementById('tabContentHistory').classList.remove('active');
+            } else {
+                document.getElementById('navTabMain').classList.remove('active');
+                document.getElementById('navTabHistory').classList.add('active');
+                document.getElementById('tabContentMain').classList.remove('active');
+                document.getElementById('tabContentHistory').classList.add('active');
+                renderHistory();
+            }
+        }
+
+        function saveToUserHistory(title, mode, loadstring) {
+            if (!currentUserEmail) return;
+            const allHistories = JSON.parse(localStorage.getItem('google_users_histories') || '{}');
+            if (!allHistories[currentUserEmail]) {
+                allHistories[currentUserEmail] = [];
+            }
+            const dateStr = new Date().toLocaleString('ru-RU');
+            allHistories[currentUserEmail].push({ title, mode, loadstring, date: dateStr });
+            localStorage.setItem('google_users_histories', JSON.stringify(allHistories));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const historyList = document.getElementById('historyList');
+            if (!currentUserEmail) {
+                historyList.innerHTML = '<div class="placeholder-text">Войдите через Google, чтобы просматривать историю сохраненных скриптов.</div>';
+                return;
+            }
+            
+            const allHistories = JSON.parse(localStorage.getItem('google_users_histories') || '{}');
+            const history = allHistories[currentUserEmail] || [];
+            
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="placeholder-text">В вашей истории пока нет сохраненных скриптов.</div>';
+                return;
+            }
+            
+            historyList.innerHTML = history.map((item, index) => `
+                <div class="history-card">
+                    <div class="history-card-header">
+                        <div class="history-card-title">${item.title}</div>
+                        <div class="history-card-meta">${item.date} | Режим: ${item.mode === 'pages' ? 'Pages' : 'TinyURL'}</div>
+                    </div>
+                    <div class="result-box-wrapper">
+                        <div class="result-box" id="histUrl_${index}">${item.loadstring}</div>
+                        <button class="copy-btn" onclick="copyToClipboard('histUrl_${index}')">Копировать</button>
+                    </div>
+                </div>
+            `).reverse().join('');
+        }
+
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Лоадстринг успешно скопирован в буфер обмена!');
+            }).catch(err => {
+                alert('Не удалось скопировать текст: ', err);
+            });
+        }
+
+        function toggleConfig() {
+            const config = document.getElementById('configSection');
+            if (config.style.display === 'none') {
+                config.style.display = 'block';
+                localStorage.setItem('gh_config_visible', 'true');
+            } else {
+                config.style.display = 'none';
+                localStorage.setItem('gh_config_visible', 'false');
+            }
+        }
+
+        function updateInputs() {
+            const mode = document.querySelector('input[name="urlMode"]:checked').value;
+            const aliasInput = document.getElementById('scriptAlias');
+            if (mode === 'short') {
+                aliasInput.placeholder = 'Название файла на GitHub (необязательно)';
+            } else {
+                aliasInput.placeholder = 'Название ссылки (например: fly)';
+            }
+        }
+
+        async function shortenUrl(longUrl) {
+            try {
+                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                if (response.ok) {
+                    return await response.text();
+                }
+            } catch (e) {
+                console.error("Не удалось сократить ссылку:", e);
+            }
+            return longUrl;
+        }
+
+        async function uploadScript() {
+            const token = document.getElementById('githubToken').value.trim();
+            const user = document.getElementById('githubUser').value.trim();
+            const repo = document.getElementById('githubRepo').value.trim();
+            const code = document.getElementById('sourceCode').value;
+            const mode = document.querySelector('input[name="urlMode"]:checked').value;
+            let alias = document.getElementById('scriptAlias').value.trim().toLowerCase();
+
+            if (!token || !user || !repo || !code.trim()) {
+                alert('Заполните все поля и введите код скрипта!');
+                return;
+            }
+
+            if (!alias) {
+                alias = Math.random().toString(36).substring(2, 8);
+            }
+
+            alias = alias.replace(/[^a-z0-9-_]/g, '');
+
+            localStorage.setItem('gh_token', token);
+            localStorage.setItem('gh_user', user);
+            localStorage.setItem('gh_repo', repo);
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Публикация скрипта...';
+
+            let path, fileName;
+            if (mode === 'pages') {
+                fileName = `${alias}.txt`;
+                path = `pages/${fileName}`;
+            } else {
+                fileName = `${alias}.lua`;
+                path = `scripts/${fileName}`;
+            }
+
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+
+            const utf8Bytes = new TextEncoder().encode(code);
+            let binary = '';
+            for (let i = 0; i < utf8Bytes.length; i++) {
+                binary += String.fromCharCode(utf8Bytes[i]);
+            }
+            const base64Content = btoa(binary);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Upload script ${fileName}`,
+                        content: base64Content
+                    })
+                });
+
+                if (response.ok) {
+                    let targetUrl;
+                    if (mode === 'pages') {
+                        targetUrl = `https://${user}.github.io/${repo}/pages/${fileName}`;
+                    } else {
+                        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${fileName}`;
+                        targetUrl = await shortenUrl(rawUrl);
+                    }
+
+                    const loadstringCode = `loadstring(game:HttpGet("${targetUrl}"))()`;
+                    document.getElementById('output').innerText = loadstringCode;
+                    document.getElementById('resultContainer').style.display = 'block';
+                    
+                    if (currentUserEmail) {
+                        saveToUserHistory(fileName, mode, loadstringCode);
+                    }
+                } else {
+                    const errData = await response.json();
+                    alert('Ошибка: ' + (errData.message || response.statusText));
+                }
+            } catch (error) {
+                alert('Произошла ошибка: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Опубликовать и получить ссылку';
+            }
+        }
+    </script>
+</body>
+</html>
         }
         button:hover {
             background-color: #00ccaa;
