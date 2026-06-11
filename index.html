@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Loadstring Pastebin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e24;
+            color: #fff;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        textarea {
+            width: 100%;
+            height: 250px;
+            background-color: #2a2a32;
+            color: #00ffcc;
+            border: 1px solid #444;
+            padding: 10px;
+            font-family: monospace;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        button {
+            background-color: #00ffcc;
+            color: #1e1e24;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #00ccaa;
+        }
+        button:disabled {
+            background-color: #555;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+        .result-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .result-box {
+            background-color: #2a2a32;
+            border: 1px solid #444;
+            padding: 15px;
+            font-family: monospace;
+            word-break: break-all;
+            white-space: pre-wrap;
+            margin-top: 5px;
+            color: #00ffcc;
+        }
+        .config-section {
+            background-color: #25252d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        .config-section input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px 0;
+            background: #1e1e24;
+            border: 1px solid #444;
+            color: #fff;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Roblox Loadstring Pastebin</h2>
+
+    <div class="config-section">
+        <h3>Настройки GitHub API</h3>
+        <label>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</label>
+        <input type="password" id="githubToken" placeholder="github_pat_...">
+        
+        <label>MrDani307:</label>
+        <input type="text" id="githubUser" placeholder="IvanIvanov">
+        
+        <label>URL-for-loadstrings:</label>
+        <input type="text" id="githubRepo" placeholder="roblox-scripts">
+    </div>
+    
+    <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
+    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
+
+    <div id="resultContainer" class="result-container">
+        <h3>Ваш Loadstring:</h3>
+        <div id="output" class="result-box"></div>
+    </div>
+
+    <script>
+        // Автоматическая загрузка настроек из localStorage для удобства
+        window.onload = function() {
+            if(localStorage.getItem('gh_token')) document.getElementById('githubToken').value = localStorage.getItem('gh_token');
+            if(localStorage.getItem('gh_user')) document.getElementById('githubUser').value = localStorage.getItem('gh_user');
+            if(localStorage.getItem('gh_repo')) document.getElementById('githubRepo').value = localStorage.getItem('gh_repo');
+        }
+
+        async function uploadScript() {
+            const token = document.getElementById('githubToken').value.trim();
+            const user = document.getElementById('githubUser').value.trim();
+            const repo = document.getElementById('githubRepo').value.trim();
+            const code = document.getElementById('sourceCode').value;
+
+            if (!token || !user || !repo || !code.trim()) {
+                alert('Заполните все поля и введите код скрипта!');
+                return;
+            }
+
+            // Сохраняем настройки в браузере, чтобы не вводить каждый раз
+            localStorage.setItem('gh_token', token);
+            localStorage.setItem('gh_user', user);
+            localStorage.setItem('gh_repo', repo);
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Публикация...';
+
+            // Генерируем случайное короткое имя файла (как id в pastebin)
+            const scriptId = Math.random().toString(36).substring(2, 8) + '.lua';
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/scripts/${scriptId}`;
+
+            // Кодируем текст в Base64 для GitHub API с поддержкой UTF-8
+            const utf8Bytes = new TextEncoder().encode(code);
+            let binary = '';
+            for (let i = 0; i < utf8Bytes.length; i++) {
+                binary += String.fromCharCode(utf8Bytes[i]);
+            }
+            const base64Content = btoa(binary);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Upload script ${scriptId}`,
+                        content: base64Content
+                    })
+                });
+
+                if (response.ok) {
+                    // Формируем прямую короткую ссылку на сырой файл
+                    const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${scriptId}`;
+                    const loadstringCode = `loadstring(game:HttpGet("${rawUrl}"))()`;
+                    
+                    document.getElementById('output').innerText = loadstringCode;
+                    document.getElementById('resultContainer').style.display = 'block';
+                } else {
+                    const errData = await response.json();
+                    alert('Ошибка GitHub API: ' + (errData.message || response.statusText));
+                }
+            } catch (error) {
+                alert('Произошла ошибка при отправке запроса: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Опубликовать и получить ссылку';
+            }
+        }
+    </script>
+</body>
+</html>
