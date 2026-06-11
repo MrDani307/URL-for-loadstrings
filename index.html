@@ -43,6 +43,18 @@
             color: #aaa;
             cursor: not-allowed;
         }
+        .toggle-config-btn {
+            background-color: #3a3a44;
+            color: #fff;
+            padding: 8px 15px;
+            font-size: 14px;
+            width: auto;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .toggle-config-btn:hover {
+            background-color: #4a4a55;
+        }
         .result-container {
             margin-top: 20px;
             display: none;
@@ -82,13 +94,32 @@
             color: #fff;
             box-sizing: border-box;
         }
+        .mode-section {
+            background-color: #25252d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+        }
+        .mode-option {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .mode-option input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Roblox Loadstring Pastebin v4</h2>
+    <h2>Roblox Loadstring Pastebin v6</h2>
 
-    <div class="config-section">
+    <button class="toggle-config-btn" onclick="toggleConfig()">Скрыть / Показать настройки</button>
+
+    <div id="configSection" class="config-section">
         <h3>Настройки GitHub API</h3>
         <label>GitHub Personal Access Token:</label>
         <input type="text" id="githubToken" placeholder="github_pat_...">
@@ -98,6 +129,18 @@
         
         <label>Имя репозитория (Repository):</label>
         <input type="text" id="githubRepo" value="URL-for-loadstrings">
+    </div>
+
+    <div class="mode-section">
+        <h3>Режим генерации ссылки</h3>
+        <label class="mode-option">
+            <input type="radio" name="urlMode" value="pages" checked onchange="updateInputs()">
+            Красивая ссылка через GitHub Pages (в папку pages/)
+        </label>
+        <label class="mode-option">
+            <input type="radio" name="urlMode" value="short" onchange="updateInputs()">
+            Сокращенная ссылка (через TinyURL)
+        </label>
     </div>
     
     <input type="text" id="scriptAlias" class="alias-input" placeholder="Название ссылки (например: fly)">
@@ -116,6 +159,43 @@
             if(localStorage.getItem('gh_token')) document.getElementById('githubToken').value = localStorage.getItem('gh_token');
             if(localStorage.getItem('gh_user')) document.getElementById('githubUser').value = localStorage.getItem('gh_user');
             if(localStorage.getItem('gh_repo')) document.getElementById('githubRepo').value = localStorage.getItem('gh_repo');
+            if(localStorage.getItem('gh_config_visible') === 'false') {
+                document.getElementById('configSection').style.display = 'none';
+            }
+            updateInputs();
+        }
+
+        function toggleConfig() {
+            const config = document.getElementById('configSection');
+            if (config.style.display === 'none') {
+                config.style.display = 'block';
+                localStorage.setItem('gh_config_visible', 'true');
+            } else {
+                config.style.display = 'none';
+                localStorage.setItem('gh_config_visible', 'false');
+            }
+        }
+
+        function updateInputs() {
+            const mode = document.querySelector('input[name="urlMode"]:checked').value;
+            const aliasInput = document.getElementById('scriptAlias');
+            if (mode === 'short') {
+                aliasInput.placeholder = 'Название файла на GitHub (необязательно, сгенерируется случайно)';
+            } else {
+                aliasInput.placeholder = 'Название ссылки (например: fly)';
+            }
+        }
+
+        async function shortenUrl(longUrl) {
+            try {
+                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                if (response.ok) {
+                    return await response.text();
+                }
+            } catch (e) {
+                console.error("Не удалось сократить ссылку:", e);
+            }
+            return longUrl;
         }
 
         async function uploadScript() {
@@ -123,6 +203,7 @@
             const user = document.getElementById('githubUser').value.trim();
             const repo = document.getElementById('githubRepo').value.trim();
             const code = document.getElementById('sourceCode').value;
+            const mode = document.querySelector('input[name="urlMode"]:checked').value;
             let alias = document.getElementById('scriptAlias').value.trim().toLowerCase();
 
             if (!token || !user || !repo || !code.trim()) {
@@ -131,7 +212,7 @@
             }
 
             if (!alias) {
-                alias = Math.random().toString(36).substring(2, 7);
+                alias = Math.random().toString(36).substring(2, 8);
             }
 
             alias = alias.replace(/[^a-z0-9-_]/g, '');
@@ -144,9 +225,16 @@
             submitBtn.disabled = true;
             submitBtn.innerText = 'Публикация скрипта...';
 
-            // Сохраняем файл как .txt в корень репозитория для стабильного отображения текста
-            const fileName = `${alias}.txt`;
-            const url = `https://api.github.com/repos/${user}/${repo}/contents/${fileName}`;
+            let path, fileName;
+            if (mode === 'pages') {
+                fileName = `${alias}.txt`;
+                path = `pages/${fileName}`;
+            } else {
+                fileName = `${alias}.lua`;
+                path = `scripts/${fileName}`;
+            }
+
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
 
             const utf8Bytes = new TextEncoder().encode(code);
             let binary = '';
@@ -163,16 +251,21 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: `Upload script ${fileName}`,
+                        message: `Upload script ${fileName} to ${mode === 'pages' ? 'pages/' : 'scripts/'}`,
                         content: base64Content
                     })
                 });
 
                 if (response.ok) {
-                    // Прямой красивый URL через домен GitHub Pages, который вернет чистый текст
-                    const customUrl = `https://${user}.github.io/${repo}/${fileName}`;
-                    const loadstringCode = `loadstring(game:HttpGet("${customUrl}"))()`;
-                    
+                    let targetUrl;
+                    if (mode === 'pages') {
+                        targetUrl = `https://${user}.github.io/${repo}/pages/${fileName}`;
+                    } else {
+                        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${fileName}`;
+                        targetUrl = await shortenUrl(rawUrl);
+                    }
+
+                    const loadstringCode = `loadstring(game:HttpGet("${targetUrl}"))()`;
                     document.getElementById('output').innerText = loadstringCode;
                     document.getElementById('resultContainer').style.display = 'block';
                 } else {
