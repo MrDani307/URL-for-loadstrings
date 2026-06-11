@@ -86,7 +86,7 @@
 </head>
 <body>
 
-    <h2>Roblox Loadstring Pastebin v3</h2>
+    <h2>Roblox Loadstring Pastebin v4</h2>
 
     <div class="config-section">
         <h3>Настройки GitHub API</h3>
@@ -100,14 +100,14 @@
         <input type="text" id="githubRepo" value="URL-for-loadstrings">
     </div>
     
-    <input type="text" id="scriptAlias" class="alias-input" placeholder="Красивое название ссылки (например: fly)">
+    <input type="text" id="scriptAlias" class="alias-input" placeholder="Название ссылки (например: fly)">
     <br><br>
 
     <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
-    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить красивую ссылку</button>
+    <button id="submitBtn" onclick="uploadScript()">Опубликовать и получить ссылку</button>
 
     <div id="resultContainer" class="result-container">
-        <h3>Ваш красивый Loadstring:</h3>
+        <h3>Ваш Loadstring:</h3>
         <div id="output" class="result-box"></div>
     </div>
 
@@ -134,7 +134,6 @@
                 alias = Math.random().toString(36).substring(2, 7);
             }
 
-            // Убираем лишние символы из названия ссылки
             alias = alias.replace(/[^a-z0-9-_]/g, '');
 
             localStorage.setItem('gh_token', token);
@@ -143,43 +142,20 @@
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerText = 'Создание красивой ссылки...';
+            submitBtn.innerText = 'Публикация скрипта...';
 
-            // Путь к файлу-перенаправлению в репозитории
-            const url = `https://api.github.com/repos/${user}/${repo}/contents/${alias}`;
+            // Сохраняем файл как .txt в корень репозитория для стабильного отображения текста
+            const fileName = `${alias}.txt`;
+            const url = `https://api.github.com/repos/${user}/${repo}/contents/${fileName}`;
 
-            // Создаем HTML-файл для Jekyll, который отдаст чистый текст скрипта
-            const redirectContent = `---
-permalink: /${alias}
-redirect_to: https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${alias}.lua
----`;
-
-            // Сначала создаем сам Lua скрипт
-            const luaUrl = `https://api.github.com/repos/${user}/${repo}/contents/scripts/${alias}.lua`;
-            
             const utf8Bytes = new TextEncoder().encode(code);
             let binary = '';
             for (let i = 0; i < utf8Bytes.length; i++) {
                 binary += String.fromCharCode(utf8Bytes[i]);
             }
-            const base64Lua = btoa(binary);
+            const base64Content = btoa(binary);
 
             try {
-                // 1. Загружаем Lua скрипт
-                await fetch(luaUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: `Create script ${alias}`,
-                        content: base64Lua
-                    })
-                });
-
-                // 2. Создаем красивый редирект для GitHub Pages
-                const base64Redirect = btoa(redirectContent);
                 const response = await fetch(url, {
                     method: 'PUT',
                     headers: {
@@ -187,14 +163,14 @@ redirect_to: https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${al
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: `Create redirect for ${alias}`,
-                        content: base64Redirect
+                        message: `Upload script ${fileName}`,
+                        content: base64Content
                     })
                 });
 
                 if (response.ok) {
-                    // Формируем самый красивый URL через твой GitHub Pages домен
-                    const customUrl = `https://${user}.github.io/${repo}/${alias}`;
+                    // Прямой красивый URL через домен GitHub Pages, который вернет чистый текст
+                    const customUrl = `https://${user}.github.io/${repo}/${fileName}`;
                     const loadstringCode = `loadstring(game:HttpGet("${customUrl}"))()`;
                     
                     document.getElementById('output').innerText = loadstringCode;
@@ -207,7 +183,7 @@ redirect_to: https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${al
                 alert('Произошла ошибка: ' + error.message);
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerText = 'Опубликовать и получить красивую ссылку';
+                submitBtn.innerText = 'Опубликовать и получить ссылку';
             }
         }
     </script>
