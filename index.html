@@ -275,7 +275,7 @@
             </label>
         </div>
         
-        <input type="text" id="scriptAlias" class="alias-input" placeholder="Название для истории или ссылки (например: Fly MM2)">
+        <input type="text" id="scriptAlias" class="alias-input" placeholder="Название файла и ссылки (например: fly-mm2)">
         <br><br>
 
         <textarea id="sourceCode" placeholder="-- Вставьте ваш Lua код сюда&#10;print('Hello World!')"></textarea>
@@ -454,13 +454,8 @@
         }
 
         function updateInputs() {
-            const mode = document.querySelector('input[name="urlMode"]:checked').value;
             const aliasInput = document.getElementById('scriptAlias');
-            if (mode === 'short') {
-                aliasInput.placeholder = 'Название для вкладки истории (например: Fly для MM2)';
-            } else {
-                aliasInput.placeholder = 'Название ссылки (например: fly)';
-            }
+            aliasInput.placeholder = 'Название файла и ссылки (например: fly-mm2)';
         }
 
         async function shortenUrl(longUrl) {
@@ -498,19 +493,14 @@
                 code = convertToLuaBytecodeWrapper(code);
             }
 
-            let historyTitle = rawAlias ? rawAlias : `Скрипт [${Math.random().toString(36).substring(2, 6)}]`;
-            if (shouldCompile) historyTitle += " (Защищён)";
-            
-            let finalGithubAlias;
-            if (mode === 'short') {
-                finalGithubAlias = Math.random().toString(36).substring(2, 10);
-            } else {
-                finalGithubAlias = rawAlias.toLowerCase().replace(/[^a-z0-9-_]/g, '');
-                if (!finalGithubAlias) {
-                    finalGithubAlias = Math.random().toString(36).substring(2, 8);
-                }
-                historyTitle = `${finalGithubAlias}.txt ` + (shouldCompile ? "(Защищён)" : "");
+            // Очищаем название для безопасного сохранения файла на гитхаб
+            let safeAlias = rawAlias.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+            if (!safeAlias) {
+                safeAlias = Math.random().toString(36).substring(2, 10);
             }
+
+            let historyTitle = safeAlias + (mode === 'pages' ? '.txt' : '.lua');
+            if (shouldCompile) historyTitle += " (Защищён)";
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
@@ -518,9 +508,9 @@
 
             let path;
             if (mode === 'pages') {
-                path = `pages/${finalGithubAlias}.txt`;
+                path = `pages/${safeAlias}.txt`;
             } else {
-                path = `scripts/${finalGithubAlias}.lua`;
+                path = `scripts/${safeAlias}.lua`;
             }
 
             const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
@@ -540,7 +530,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: `Upload script ${finalGithubAlias}`,
+                        message: `Upload script ${safeAlias}`,
                         content: base64Content
                     })
                 });
@@ -548,9 +538,9 @@
                 if (response.ok) {
                     let targetUrl;
                     if (mode === 'pages') {
-                        targetUrl = `https://${user}.github.io/${repo}/pages/${finalGithubAlias}.txt`;
+                        targetUrl = `https://${user}.github.io/${repo}/pages/${safeAlias}.txt`;
                     } else {
-                        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${finalGithubAlias}.lua`;
+                        const rawUrl = `https://raw.githubusercontent.com/${user}/${repo}/main/scripts/${safeAlias}.lua`;
                         targetUrl = await shortenUrl(rawUrl);
                     }
 
