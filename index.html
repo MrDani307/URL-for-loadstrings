@@ -205,6 +205,19 @@
             justify-content: center;
             padding: 10px 0;
         }
+        .compile-option {
+            margin: 15px 0 5px 0;
+            display: flex;
+            align-items: center;
+            color: #00ffcc;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .compile-option input {
+            margin-right: 10px;
+            transform: scale(1.2);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -255,6 +268,11 @@
                 <input type="radio" name="urlMode" value="short" onchange="updateInputs()">
                 Сокращенная ссылка (через TinyURL)
             </label>
+
+            <label class="compile-option">
+                <input type="checkbox" id="compileBytecode">
+                Скрыть исходный Lua-код (защита от чтения в браузере)
+            </label>
         </div>
         
         <input type="text" id="scriptAlias" class="alias-input" placeholder="Название для истории или ссылки (например: Fly MM2)">
@@ -282,7 +300,6 @@
         let currentUserEmail = null;
         let currentUserName = null;
 
-        // Твой личный Client ID
         const GOOGLE_CLIENT_ID = "403273378657-l7uh3c0efqud00jsdcu3ff0b6ub60kft.apps.googleusercontent.com";
 
         window.onload = function() {
@@ -458,12 +475,18 @@
             return longUrl;
         }
 
+        function convertToLuaBytecodeWrapper(source) {
+            let b64 = btoa(unescape(encodeURIComponent(source)));
+            return `local b64 = "${b64}"\nlocal function d(data) local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' data = string.gsub(data, '[^'..b..'=]', '') return (data:gsub('.', function(x) if x == '=' then return '' end local r,f='',(b:find(x)-1) for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end return r; end):gsub('%d%d%d%d%d%d%d%d', function(x) local r=0 for i=1,8 do r=r+(x:sub(i,i)=='1' and 2^(8-i) or 0) end return string.char(r) end)) end\nassert(loadstring(d(b64)))()`;
+        }
+
         async function uploadScript() {
             const token = document.getElementById('githubToken').value.trim();
             const user = document.getElementById('githubUser').value.trim();
             const repo = document.getElementById('githubRepo').value.trim();
-            const code = document.getElementById('sourceCode').value;
+            let code = document.getElementById('sourceCode').value;
             const mode = document.querySelector('input[name="urlMode"]:checked').value;
+            const shouldCompile = document.getElementById('compileBytecode').checked;
             let rawAlias = document.getElementById('scriptAlias').value.trim();
 
             if (!token || !user || !repo || !code.trim()) {
@@ -471,20 +494,22 @@
                 return;
             }
 
-            // Для истории сохраняем введённое название или генерируем дефолтное
+            if (shouldCompile) {
+                code = convertToLuaBytecodeWrapper(code);
+            }
+
             let historyTitle = rawAlias ? rawAlias : `Скрипт [${Math.random().toString(36).substring(2, 6)}]`;
+            if (shouldCompile) historyTitle += " (Защищён)";
             
             let finalGithubAlias;
             if (mode === 'short') {
-                // В режиме TinyURL для Гитхаба всегда берем рандомный ID во избежание сбоев в API сокращателя
                 finalGithubAlias = Math.random().toString(36).substring(2, 10);
             } else {
-                // В режиме Pages очищаем введённую строку под требования URL
                 finalGithubAlias = rawAlias.toLowerCase().replace(/[^a-z0-9-_]/g, '');
                 if (!finalGithubAlias) {
                     finalGithubAlias = Math.random().toString(36).substring(2, 8);
                 }
-                historyTitle = `${finalGithubAlias}.txt`; // В режиме Pages отображаем имя файла
+                historyTitle = `${finalGithubAlias}.txt ` + (shouldCompile ? "(Защищён)" : "");
             }
 
             const submitBtn = document.getElementById('submitBtn');
